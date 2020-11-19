@@ -2,8 +2,8 @@ from jetbot import Robot
 
 import time
 
-ROBOT_MOVEMENT = True
-# ROBOT_MOVEMENT = False
+# ROBOT_MOVEMENT = True
+ROBOT_MOVEMENT = False
 
 SWAP_LR_MOTOR = True
 MAX_SPEED = 0.6
@@ -12,7 +12,7 @@ MAX_SPEED = 0.6
 def calc_motor_PWR(direction, normal_speed=0.3):
     if direction is None:
         return 0, 0
-    fix = direction/10
+    fix = direction*normal_speed*0.8
     if fix > 0:
         right_PWR = normal_speed + fix
         left_PWR = normal_speed

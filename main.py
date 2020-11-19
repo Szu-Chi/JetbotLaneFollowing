@@ -58,9 +58,11 @@ if __name__ == '__main__':
             totle_direction += direction - avg_direction
             avg_direction = totle_direction/10
 
-            
             if (cv2.waitKey(1) & 0xFF == ord('q')):
                 break
+            if (cv2.waitKey(1) & 0xFF == ord('s')):
+                control.ROBOT_MOVEMENT = not control.ROBOT_MOVEMENT
+            
             if direction > 1 or direction < -1:
                 # robot.stop() 
                 continue
