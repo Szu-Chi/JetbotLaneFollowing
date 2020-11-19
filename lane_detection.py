@@ -6,7 +6,7 @@ import nanocamera as nano
 
 LINE_COLOR = [0, 255, 255]
 DIRECTION_COLOR = [0, 0, 255]
-LINE_THICKNESS = 3
+LINE_THICKNESS = 30
 SHOW_PREPROCRESULT = True
 
 def HSL_color_selection(image):
@@ -43,7 +43,7 @@ def hough_transform(image):
     rho = 1              #Distance resolution of the accumulator in pixels.
     theta = np.pi/180    #Angle resolution of the accumulator in radians.
     threshold = 10       #Only lines that are greater than threshold will be returned.
-    minLineLength = 10   #Line segments shorter than that are rejected.
+    minLineLength = 120   #Line segments shorter than that are rejected.
     maxLineGap = 0      #Maximum allowed gap between points on the same line to link them
     return cv2.HoughLinesP(image, rho = rho, theta = theta, threshold = threshold,
                            minLineLength = minLineLength, maxLineGap = maxLineGap)
@@ -59,13 +59,13 @@ def average_slope_intercept(lines):
             if x1 == x2:
                 continue
             slope = (y2 - y1) / (x2 - x1)
-            intercept = y1 - (slope * x1)
+            # intercept = y1 - (slope * x1)
             length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
             if slope < 0:
-                left_lines.append((slope, intercept))
+                left_lines.append((x1, y1, x2, y2))
                 left_weights.append((length))
             else:
-                right_lines.append((slope, intercept))
+                right_lines.append((x1, y1, x2, y2))
                 right_weights.append((length))
     left_lane  = np.dot(left_weights,  left_lines) / np.sum(left_weights)  if len(left_weights) > 0 else None
     right_lane = np.dot(right_weights, right_lines) / np.sum(right_weights) if len(right_weights) > 0 else None
@@ -85,31 +85,38 @@ def pixel_points(y1, y2, line):
 
 def lane_lines(image, lines):
     left_lane, right_lane = average_slope_intercept(lines)
-    y1 = image.shape[0]
-    y2 = y1 * 0.5
-    left_line  = pixel_points(y1, y2, left_lane)
-    right_line = pixel_points(y1, y2, right_lane)
-    return left_line, right_line
+    return left_lane, right_lane
     
 def draw_lane_lines(image, lines):
     line_image = np.zeros_like(image)
     for line in lines:
         if line is not None:
-            cv2.line(line_image, *line,  LINE_COLOR, LINE_THICKNESS)
+            line = [int(i) for i in line]
+            x1,y1,x2,y2 = line
+            cv2.line(line_image,(x1, y1),(x2, y2), LINE_COLOR, LINE_THICKNESS)
+            # cv2.line(line_image, *line,  LINE_COLOR, LINE_THICKNESS)
     return cv2.addWeighted(image, 1.0, line_image, 1.0, 0.0)
 
-def find_lane(src):
+def find_lane(src, thre=235):
     gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
     hist = cv2.equalizeHist(gray)
-    ret, binary = cv2.threshold(hist, 240, 255, cv2.THRESH_BINARY)
-    median = cv2.medianBlur(binary, 5)
+    ret, binary = cv2.threshold(hist, thre, 255, cv2.THRESH_BINARY)
+    median = cv2.medianBlur(binary, 15)
     hough = hough_transform(median)
-    if len(hough) < 4:
+    
+    if hough is None:
         return None
 
     if SHOW_PREPROCRESULT:
         preproc_result = median
-        cv2.imshow("Preprocessing Result frame", preproc_result)     
+        cv2.imshow("Preprocessing Result frame", preproc_result)
+        h, w = src.shape[:2]
+        hough_img = np.zeros((h, w, 3), np.uint8)
+        for hLine in hough:
+            for x1,y1,x2,y2 in hLine:
+                cv2.line(hough_img,(x1,y1),(x2,y2),(0,255,0),2)
+        cv2.imshow("Hough Result frame", hough_img)
+                 
     return lane_lines(src, hough)
 
 if __name__ == '__main__':
